@@ -8,7 +8,7 @@ This will submit a job for you. After the job finishes you can use the private s
 source ${SPACK_PATH}/share/spack/setup-env.sh
 ```
 
-${SPACK_PATH} is usually points to .spack-llvm-v19.1.4/ folder within one of your data directories, and not your home folder. You may change the default path when submitting the job, e.g.
+The ${SPACK_PATH} usually points to .spack-llvm-v19.1.4/ within one of your data directories (e.g. /vol*/data/\<one_of_your_groups\>/), and not your home folder. You may change the default path when submitting the job, e.g.
 ```
 pjsub -x "SPACK_PATH=$HOME/newspack" ./spack0.22_llvm19.sh
 ```
