@@ -180,5 +180,35 @@ for PP in fujitsu-mpi@head fujitsu-mpi@4.11.1 fujitsu-ssl2@head fujitsu-ssl2@4.1
 	done
 done
 
+#fix some known bad packages
+sed -i -e '/spec.satisfies("%fj")/i\        if spec.satisfies("%clang@19:"):\n            for f in find(self.prefix, "FindBLAS.cmake", recursive=True):\n                filter_file("_blas_openblas_lib}", "_blas_openblas_lib};FortranRuntime;FortranDecimal", f, string=True)' -e 's@%fj"):@%fj") or (spec.target == "a64fx" and spec.satisfies("%clang\@11:")):@g' ${SPACK_REPOS}/{local,builtin}/packages/cmake/package.py
+sed -i -e '/version("develop/a\    version("0.3.28", sha256="f1003466ad074e9b0c8d421a204121100b0751c96fc6fcf3d1456bd12f8a00a1")' -e '/satisfies("%fj"/i\        if self.spec.satisfies("%clang@19:"):\n            make_defs.append("LDFLAGS=-lFortranRuntime -lFortranDecimal")' ${SPACK_REPOS}/{local,builtin}/packages/openblas/package.py
+cat <<'EOF' > ${SPACK_REPOS}/builtin/packages/scorep/fugaku.patch
+diff --color -Nur scorep-8.4.old/src/tools/config/scorep_config.cpp scorep-8.4.new/src/tools/config/scorep_config.cpp
+--- scorep-8.4.old/src/tools/config/scorep_config.cpp   2024-03-15 15:42:11.898159471 +0900
++++ scorep-8.4.new/src/tools/config/scorep_config.cpp   2024-08-27 19:32:26.946194787 +0900
+@@ -1015,7 +1015,7 @@
+ static std::deque<std::string>
+ remove_system_path( const std::deque<std::string>& path_list )
+ {
+-    std::string             dlsearch_path = SCOREP_BACKEND_SYS_LIB_DLSEARCH_PATH;
++    std::string             dlsearch_path = std::string(SCOREP_BACKEND_SYS_LIB_DLSEARCH_PATH) + std::string(" /lib64 /usr/lib64");
+     std::deque<std::string> system_paths  = string_to_deque( dlsearch_path, " " );
+     std::deque<std::string> result_paths;
+
+EOF
+sed -i -e 's@spec.satisfies("^openmpi") @spec.satisfies("^openmpi") or spec.satisfies("^fujitsu-mpi") @g' -e 's@depends_on("llvm@#depends_on("llvm@g' -e '/patch("gcc10/a\    patch("fugaku.patch", when="@8.4")' -e '/satisfies("^binutils/a\            config_args.append("--with-libbfd=download")' -e '/with-libbfd-lib/d' -e '/with-libbfd-include/d' ${SPACK_REPOS}/{local,builtin}/packages/scorep/package.py
+sed -i -e '/configure_args = \["--enable-shared/a\        configure_args.append("--with-nocross-compiler-suite=clang")' ${SPACK_REPOS}/{local,builtin}/packages/cubew/package.py
+sed -i -e '/configure_args = \["--enable-shared/a\        configure_args.append("--with-nocross-compiler-suite=clang")' ${SPACK_REPOS}/{local,builtin}/packages/cubelib/package.py
+sed -i -e 's@enable-shared"]@enable-shared", "--with-compiler-suite=clang"]@g' ${SPACK_REPOS}/{local,builtin}/packages/opari2/package.py
+sed -i -e '/FileFilter/i\        CCFLAGS.extend(["-Wno-implicit-function-declaration"])' ${SPACK_REPOS}/{local,builtin}/packages/batchedblas/package.py
+sed -i -e '/append(self.define("CMAKE_C_FLAGS/a\        options.append(self.define("CMAKE_EXE_LINKER_FLAGS", "-fopenmp"))' ${SPACK_REPOS}/{local,builtin}/packages/netlib-scalapack/package.py
+sed -i -e 's@%fj"):@%fj") or spec.satisfies("%clang"):@g' -e '/elf.spec.satisfies("@1.78 %intel/i\        if self.spec.satisfies("%clang"):\n            filter_file("FALSE=1", "FALSE=1; B2_DONT_EMBED_MANIFEST=1", "tools/build/src/engine/build.sh")' ${SPACK_REPOS}/{local,builtin}/packages/boost/package.py
+sed -i -e '/version("1.17"/i\    version("1.17-cp2k", commit="6f883620f58afdeebab28039fc9cf580e76a5ec6")' -e '/requires("target=x86_64:", when="@:1")/d' -e 's@SYM=1@PLATFORM=1@g' -e '/def build/i\    def edit(self, spec, prefix):\n        cp = FileFilter("Makefile.inc")\n        cp.filter("-fdata-sections -ffunction-sections", "")\n' ${SPACK_REPOS}/{local,builtin}/packages/libxsmm/package.py
+sed -i -e 's@%apple-clang")@%apple-clang") or spec.satisfies("%clang")@g' ${SPACK_REPOS}/{local,builtin}/packages/superlu-dist/package.py
+sed -i -e '/return args/i\        args.append(self.define("CMAKE_CXX_FLAGS", "-Wno-missing-template-arg-list-after-template-kw -Wno-infinite-recursion"))' ${SPACK_REPOS}/{local,builtin}/packages/sirius/package.py
+sed -i -e '/parallel = False/d' ${SPACK_REPOS}/{local,builtin}/packages/plumed/package.py
+sed -i -e '/maintainers("jeffhammond/a\    version("7.2.3", sha256="8cb4ec065215bc0316d8e01f67f1674a572f7d0f565c52e4a327975c04ddb6eb", url="https://github.com/nwchemgit/nwchem/releases/download/v7.2.3-release/nwchem-7.2.3-release.revision-d690e065-srconly.2024-08-27.tar.bz2")' -e '/"FC=/a\                "FLANG_NEW=true",\n                "VERBOSE=1",' -e '/def install/a\        cp = FileFilter(join_path("src", "geom", "GNUmakefile"))\n        cp.filter("-fno-recursive -fno-openmp", "")' -e 's@7.2.0:7.2.2@7.2.0:7.2.3@g' -e '/def install/a\        cp = FileFilter(join_path("src", "nwpw", "nwpwlib", "ion", "ion.F"))\n        cp.filter("OMP SINGLE", "OMP MASTER")\n        cp.filter("OMP END SINGLE.*", "OMP END MASTER")' -e 's@all python gwmol"])@driver"]) #all python gwmol"])@g' ${SPACK_REPOS}/{local,builtin}/packages/nwchem/package.py
+
 echo "Setup complete, load via:"
 echo "    . \"${SPACK_PATH}/share/spack/setup-env.sh\""
